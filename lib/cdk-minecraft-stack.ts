@@ -8,8 +8,8 @@ import { AutoScalingGroup, ScheduledAction, Schedule } from '@aws-cdk/aws-autosc
 import * as ecs from '@aws-cdk/aws-ecs'
 
 const TEST = true
-const INSTANCE_TYPE = 't4g.medium'
-const SPOT_PRICE = '0.0336'
+const INSTANCE_TYPE = 't3.medium'
+const SPOT_PRICE = '0.0416'
 
 export class CdkMinecraftStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
