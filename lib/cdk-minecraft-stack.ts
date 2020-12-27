@@ -45,20 +45,32 @@ export class CdkMinecraftStack extends cdk.Stack {
     })
 
     const ec2Task = new ecs.Ec2TaskDefinition(this, 'MinecraftTask')
-    ec2Task.addContainer('MinecraftServerContainer', {
+    const container = ec2Task.addContainer('MinecraftServerContainer', {
       image: ecs.ContainerImage.fromRegistry('itzg/minecraft:latest'),
-      memoryLimitMiB: 3584,
+      memoryReservationMiB: 1024,
       environment: {
         'EULA': 'true',
         'DIFFICULTY': 'normal',
       }
     })
+    container.addPortMappings({
+      containerPort: 25565,
+      hostPort: 25565,
+      protocol: ecs.Protocol.TCP,
+    })
     ec2Task.addVolume({
       name: 'MinecraftEfsVolume',
       efsVolumeConfiguration: {
         fileSystemId: fileSystem.fileSystemId,
-        rootDirectory: '/opt/minecraft'
+      },
+      host: {
+        sourcePath: '/opt/minecraft'
       }
+    })
+    container.addMountPoints({
+      containerPath: '/data',
+      sourceVolume: 'MinecraftEfsVolume',
+      readOnly: false,
     })
 
     const service = new ecs.Ec2Service(this, 'MinecraftService', {
