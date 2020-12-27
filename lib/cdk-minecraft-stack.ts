@@ -63,9 +63,6 @@ export class CdkMinecraftStack extends cdk.Stack {
       efsVolumeConfiguration: {
         fileSystemId: fileSystem.fileSystemId,
       },
-      host: {
-        sourcePath: '/opt/minecraft'
-      }
     })
     container.addMountPoints({
       containerPath: '/data',
