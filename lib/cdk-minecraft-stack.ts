@@ -1,9 +1,10 @@
 import * as cdk from '@aws-cdk/core'
 import * as efs from '@aws-cdk/aws-efs'
-import * as ec2 from '@aws-cdk/aws-ec2'
+import { Vpc, Port } from '@aws-cdk/aws-ec2'
 import { LifecyclePolicy } from '@aws-cdk/aws-efs'
 import { RemovalPolicy } from '@aws-cdk/core'
 import { InstanceType, MachineImage } from '@aws-cdk/aws-ec2'
+import { AutoScalingGroup, ScheduledAction, Schedule } from '@aws-cdk/aws-autoscaling'
 
 const TEST = true
 const INSTANCE_TYPE = 't4g.medium'
@@ -12,14 +13,26 @@ export class CdkMinecraftStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
-    const vpc = new ec2.Vpc(this, 'MinecraftVpc')
+    const vpc = new Vpc(this, 'MinecraftVpc')
 
-    const server = new ec2.Instance(this, 'MinecraftServer', {
+    const server = new AutoScalingGroup(this, 'MinecraftServer', {
       vpc,
       instanceType: new InstanceType(INSTANCE_TYPE),
       machineImage: MachineImage.latestAmazonLinux(),
+      desiredCapacity: 1,
     })
-    server.connections.allowFromAnyIpv4(ec2.Port.tcp(22565))
+    server.connections.allowFromAnyIpv4(Port.tcp(22565))
+
+    new ScheduledAction(this, 'ScaleDownMinecraft', {
+      autoScalingGroup: server,
+      schedule: Schedule.cron({ hour: '22', minute: '0' }),
+      desiredCapacity: 0
+    })
+    new ScheduledAction(this, 'ScaleUpMinecraft', {
+      autoScalingGroup: server,
+      schedule: Schedule.cron({ hour: '15', minute: '0' }),
+      desiredCapacity: 1
+    })
 
     const fileSystem = new efs.FileSystem(this, 'MinecraftEfs', {
       vpc,
