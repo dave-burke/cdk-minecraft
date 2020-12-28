@@ -23,6 +23,9 @@ export class CdkMinecraftStack extends cdk.Stack {
       machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
       desiredCapacity: 1,
       spotPrice: SPOT_PRICE,
+      vpcSubnets: {
+        subnets: cluster.vpc.publicSubnets
+      },
     })
 
     new ScheduledAction(this, 'ScaleDownMinecraft', {
