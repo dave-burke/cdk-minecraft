@@ -10,13 +10,14 @@ import * as ecs from '@aws-cdk/aws-ecs'
 const TEST = true
 const INSTANCE_TYPE = 't3.medium'
 const SPOT_PRICE = '0.0416'
+const MINECRAFT_PORT = 25565
 
 export class CdkMinecraftStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
     const cluster = new ecs.Cluster(this, 'MinecraftCluster')
-    cluster.connections.allowFromAnyIpv4(Port.tcp(22565))
+    cluster.connections.allowFromAnyIpv4(Port.tcp(MINECRAFT_PORT))
 
     const autoScalingGroup = cluster.addCapacity('MinecraftServer', {
       instanceType: new InstanceType(INSTANCE_TYPE),
@@ -59,8 +60,8 @@ export class CdkMinecraftStack extends cdk.Stack {
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'Minecraft' })
     })
     container.addPortMappings({
-      containerPort: 25565,
-      hostPort: 25565,
+      containerPort: MINECRAFT_PORT,
+      hostPort: MINECRAFT_PORT,
       protocol: ecs.Protocol.TCP,
     })
     ec2Task.addVolume({
