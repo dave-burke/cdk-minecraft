@@ -49,7 +49,7 @@ export class CdkMinecraftStack extends cdk.Stack {
 
     const ec2Task = new ecs.Ec2TaskDefinition(this, 'MinecraftTask')
     const container = ec2Task.addContainer('MinecraftServerContainer', {
-      image: ecs.ContainerImage.fromRegistry('itzg/minecraft:latest'),
+      image: ecs.ContainerImage.fromRegistry('itzg/minecraft-server:latest'),
       memoryReservationMiB: 1024,
       environment: {
         'EULA': 'true',
