@@ -44,8 +44,9 @@ export class CdkMinecraftStack extends cdk.Stack {
       encrypted: true,
       enableAutomaticBackups: !TEST,
       lifecyclePolicy: LifecyclePolicy.AFTER_7_DAYS,
-      removalPolicy: TEST? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+      removalPolicy: TEST ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
     })
+    fileSystem.connections.allowDefaultPortFrom(autoScalingGroup)
 
     const ec2Task = new ecs.Ec2TaskDefinition(this, 'MinecraftTask')
     const container = ec2Task.addContainer('MinecraftServerContainer', {
@@ -54,7 +55,8 @@ export class CdkMinecraftStack extends cdk.Stack {
       environment: {
         'EULA': 'true',
         'DIFFICULTY': 'normal',
-      }
+      },
+      logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'Minecraft' })
     })
     container.addPortMappings({
       containerPort: 25565,
