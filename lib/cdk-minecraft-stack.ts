@@ -1,11 +1,8 @@
 import * as cdk from '@aws-cdk/core'
-import * as efs from '@aws-cdk/aws-efs'
-import { Vpc, Port } from '@aws-cdk/aws-ec2'
-import { LifecyclePolicy } from '@aws-cdk/aws-efs'
-import { RemovalPolicy } from '@aws-cdk/core'
-import { InstanceType, MachineImage } from '@aws-cdk/aws-ec2'
-import { AutoScalingGroup, ScheduledAction, Schedule } from '@aws-cdk/aws-autoscaling'
+import * as autoscaling from '@aws-cdk/aws-autoscaling'
+import * as ec2 from '@aws-cdk/aws-ec2'
 import * as ecs from '@aws-cdk/aws-ecs'
+import * as efs from '@aws-cdk/aws-efs'
 
 const TEST = true
 const INSTANCE_TYPE = 't3.medium'
@@ -16,17 +13,17 @@ export class CdkMinecraftStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
-    const vpc = new Vpc(this, 'MinecraftVpc', {
+    const vpc = new ec2.Vpc(this, 'MinecraftVpc', {
       natGateways: 0,
     })
 
     const cluster = new ecs.Cluster(this, 'MinecraftCluster', {
       vpc,
     })
-    cluster.connections.allowFromAnyIpv4(Port.tcp(MINECRAFT_PORT))
+    cluster.connections.allowFromAnyIpv4(ec2.Port.tcp(MINECRAFT_PORT))
 
     const autoScalingGroup = cluster.addCapacity('MinecraftServer', {
-      instanceType: new InstanceType(INSTANCE_TYPE),
+      instanceType: new ec2.InstanceType(INSTANCE_TYPE),
       machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
       desiredCapacity: 1,
       spotPrice: SPOT_PRICE,
@@ -35,14 +32,14 @@ export class CdkMinecraftStack extends cdk.Stack {
       },
     })
 
-    new ScheduledAction(this, 'ScaleDownMinecraft', {
+    new autoscaling.ScheduledAction(this, 'ScaleDownMinecraft', {
       autoScalingGroup,
-      schedule: Schedule.cron({ hour: '22', minute: '0' }),
+      schedule: autoscaling.Schedule.cron({ hour: '22', minute: '0' }),
       desiredCapacity: 0
     })
-    new ScheduledAction(this, 'ScaleUpMinecraft', {
+    new autoscaling.ScheduledAction(this, 'ScaleUpMinecraft', {
       autoScalingGroup,
-      schedule: Schedule.cron({ hour: '15', minute: '0' }),
+      schedule: autoscaling.Schedule.cron({ hour: '15', minute: '0' }),
       desiredCapacity: 1
     })
 
@@ -50,8 +47,8 @@ export class CdkMinecraftStack extends cdk.Stack {
       vpc: cluster.vpc,
       encrypted: true,
       enableAutomaticBackups: !TEST,
-      lifecyclePolicy: LifecyclePolicy.AFTER_7_DAYS,
-      removalPolicy: TEST ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+      lifecyclePolicy: efs.LifecyclePolicy.AFTER_7_DAYS,
+      removalPolicy: TEST ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN,
     })
     fileSystem.connections.allowDefaultPortFrom(autoScalingGroup)
 
@@ -86,5 +83,6 @@ export class CdkMinecraftStack extends cdk.Stack {
       cluster,
       taskDefinition: ec2Task,
     })
+
   }
 }
