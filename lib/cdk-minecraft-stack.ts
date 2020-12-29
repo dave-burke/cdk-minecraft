@@ -16,7 +16,13 @@ export class CdkMinecraftStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
-    const cluster = new ecs.Cluster(this, 'MinecraftCluster')
+    const vpc = new Vpc(this, 'MinecraftVpc', {
+      natGateways: 0,
+    })
+
+    const cluster = new ecs.Cluster(this, 'MinecraftCluster', {
+      vpc,
+    })
     cluster.connections.allowFromAnyIpv4(Port.tcp(MINECRAFT_PORT))
 
     const autoScalingGroup = cluster.addCapacity('MinecraftServer', {
