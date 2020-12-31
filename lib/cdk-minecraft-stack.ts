@@ -3,6 +3,11 @@ import * as autoscaling from '@aws-cdk/aws-autoscaling'
 import * as ec2 from '@aws-cdk/aws-ec2'
 import * as ecs from '@aws-cdk/aws-ecs'
 import * as efs from '@aws-cdk/aws-efs'
+import * as events from '@aws-cdk/aws-events'
+import * as iam from '@aws-cdk/aws-iam'
+import * as lambda from '@aws-cdk/aws-lambda'
+import * as path from 'path'
+import * as targets from '@aws-cdk/aws-events-targets'
 
 const TEST = true
 const INSTANCE_TYPE = 't3.medium'
@@ -86,6 +91,31 @@ export class CdkMinecraftStack extends cdk.Stack {
       cluster,
       taskDefinition: ec2Task,
     })
+
+    const dnsUpdateLambda = new lambda.Function(this, 'MinecraftDnsUpdate', {
+      description: 'Set Route53 record for Minecraft',
+      vpc,
+      runtime: lambda.Runtime.PYTHON_3_7,
+      handler: 'DnsUpdate.handler',
+      memorySize: 128,
+      timeout: cdk.Duration.seconds(20),
+      code: lambda.Code.fromAsset('lambda'),
+      environment: {
+        HostedZoneId: '[hosted zone ID from Route53]',
+        RecordName: 'minecraft.example.com',
+      },
+    })
+    dnsUpdateLambda.role?.addToPrincipalPolicy(new iam.PolicyStatement({ resources: ['*'], actions: ['route53:*'] }))
+    dnsUpdateLambda.role?.addToPrincipalPolicy(new iam.PolicyStatement({ resources: ['*'], actions: ['ec2:DescribeInstance'] }))
+
+    const rule = new events.Rule(this, 'MinecraftInstanceLaunchRule', {
+      eventPattern: {
+        source: ['aws.autoscaling'],
+        detailType: ['EC2 Instance Launch Successful'],
+        detail: [ autoScalingGroup.autoScalingGroupName ],
+      },
+      targets: [ new targets.LambdaFunction(dnsUpdateLambda) ],
+    });
 
   }
 }
