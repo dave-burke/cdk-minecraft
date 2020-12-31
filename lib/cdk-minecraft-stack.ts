@@ -18,15 +18,12 @@ export class CdkMinecraftStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
-    const vpc = new ec2.Vpc(this, 'MinecraftVpc', {
-      natGateways: 0,
-    })
-
-    const cluster = new ecs.Cluster(this, 'MinecraftCluster', {
-      vpc,
-    })
+    // Cluster
+    const vpc = new ec2.Vpc(this, 'MinecraftVpc', { natGateways: 0 })
+    const cluster = new ecs.Cluster(this, 'MinecraftCluster', { vpc })
     cluster.connections.allowFromAnyIpv4(ec2.Port.tcp(MINECRAFT_PORT))
 
+    // Autoscaling
     const autoScalingGroup = cluster.addCapacity('MinecraftServer', {
       instanceType: new ec2.InstanceType(INSTANCE_TYPE),
       machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
@@ -51,6 +48,7 @@ export class CdkMinecraftStack extends cdk.Stack {
       minCapacity: 1,
     })
 
+    // File system
     const fileSystem = new efs.FileSystem(this, 'MinecraftEfs', {
       vpc: cluster.vpc,
       encrypted: true,
@@ -60,6 +58,7 @@ export class CdkMinecraftStack extends cdk.Stack {
     })
     fileSystem.connections.allowDefaultPortFrom(autoScalingGroup)
 
+    // Task definition
     const ec2Task = new ecs.Ec2TaskDefinition(this, 'MinecraftTask')
     const container = ec2Task.addContainer('MinecraftServerContainer', {
       image: ecs.ContainerImage.fromRegistry('itzg/minecraft-server:latest'),
@@ -92,6 +91,7 @@ export class CdkMinecraftStack extends cdk.Stack {
       taskDefinition: ec2Task,
     })
 
+    // DNS Update
     const dnsUpdateLambda = new lambda.Function(this, 'MinecraftDnsUpdate', {
       description: 'Set Route53 record for Minecraft',
       vpc,
