@@ -25,7 +25,8 @@ export class CdkMinecraftStack extends cdk.Stack {
     const autoScalingGroup = cluster.addCapacity('MinecraftServer', {
       instanceType: new ec2.InstanceType(INSTANCE_TYPE),
       machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
-      desiredCapacity: 1,
+      maxCapacity: 1,
+      minCapacity: 1,
       spotPrice: SPOT_PRICE,
       vpcSubnets: {
         subnets: cluster.vpc.publicSubnets
@@ -35,12 +36,14 @@ export class CdkMinecraftStack extends cdk.Stack {
     new autoscaling.ScheduledAction(this, 'ScaleDownMinecraft', {
       autoScalingGroup,
       schedule: autoscaling.Schedule.cron({ hour: '22', minute: '0' }),
-      desiredCapacity: 0
+      maxCapacity: 0,
+      minCapacity: 0,
     })
     new autoscaling.ScheduledAction(this, 'ScaleUpMinecraft', {
       autoScalingGroup,
       schedule: autoscaling.Schedule.cron({ hour: '15', minute: '0' }),
-      desiredCapacity: 1
+      maxCapacity: 1,
+      minCapacity: 1,
     })
 
     const fileSystem = new efs.FileSystem(this, 'MinecraftEfs', {
