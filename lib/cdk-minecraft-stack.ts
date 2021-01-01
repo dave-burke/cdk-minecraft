@@ -13,6 +13,7 @@ const TEST = true
 const INSTANCE_TYPE = 't3.medium'
 const SPOT_PRICE = '0.0416'
 const MINECRAFT_PORT = 25565
+const TIMEZONE_OFFSET = -6 // CST
 
 export class CdkMinecraftStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -37,13 +38,13 @@ export class CdkMinecraftStack extends cdk.Stack {
 
     new autoscaling.ScheduledAction(this, 'ScaleDown', {
       autoScalingGroup,
-      schedule: autoscaling.Schedule.cron({ hour: '22', minute: '0' }),
+      schedule: autoscaling.Schedule.cron({ hour: `${22 + TIMEZONE_OFFSET}`, minute: '0' }),
       maxCapacity: 0,
       minCapacity: 0,
     })
     new autoscaling.ScheduledAction(this, 'ScaleUp', {
       autoScalingGroup,
-      schedule: autoscaling.Schedule.cron({ hour: '15', minute: '0' }),
+      schedule: autoscaling.Schedule.cron({ hour: `${15 + TIMEZONE_OFFSET}`, minute: '0' }),
       maxCapacity: 1,
       minCapacity: 1,
     })
