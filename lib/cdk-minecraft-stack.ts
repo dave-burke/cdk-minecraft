@@ -19,8 +19,8 @@ export class CdkMinecraftStack extends cdk.Stack {
     super(scope, id, props)
 
     // Cluster
-    const vpc = new ec2.Vpc(this, 'MinecraftVpc', { natGateways: 0 })
-    const cluster = new ecs.Cluster(this, 'MinecraftCluster', { vpc })
+    const vpc = new ec2.Vpc(this, 'Vpc', { natGateways: 0 })
+    const cluster = new ecs.Cluster(this, 'EcsCluster', { vpc })
     cluster.connections.allowFromAnyIpv4(ec2.Port.tcp(MINECRAFT_PORT))
 
     // Autoscaling
@@ -35,13 +35,13 @@ export class CdkMinecraftStack extends cdk.Stack {
       },
     })
 
-    new autoscaling.ScheduledAction(this, 'ScaleDownMinecraft', {
+    new autoscaling.ScheduledAction(this, 'ScaleDown', {
       autoScalingGroup,
       schedule: autoscaling.Schedule.cron({ hour: '22', minute: '0' }),
       maxCapacity: 0,
       minCapacity: 0,
     })
-    new autoscaling.ScheduledAction(this, 'ScaleUpMinecraft', {
+    new autoscaling.ScheduledAction(this, 'ScaleUp', {
       autoScalingGroup,
       schedule: autoscaling.Schedule.cron({ hour: '15', minute: '0' }),
       maxCapacity: 1,
@@ -49,7 +49,7 @@ export class CdkMinecraftStack extends cdk.Stack {
     })
 
     // File system
-    const fileSystem = new efs.FileSystem(this, 'MinecraftEfs', {
+    const fileSystem = new efs.FileSystem(this, 'ServerFiles', {
       vpc: cluster.vpc,
       encrypted: true,
       enableAutomaticBackups: !TEST,
@@ -59,8 +59,8 @@ export class CdkMinecraftStack extends cdk.Stack {
     fileSystem.connections.allowDefaultPortFrom(autoScalingGroup)
 
     // Task definition
-    const ec2Task = new ecs.Ec2TaskDefinition(this, 'MinecraftTask')
-    const container = ec2Task.addContainer('MinecraftServerContainer', {
+    const ec2Task = new ecs.Ec2TaskDefinition(this, 'Ec2Task')
+    const container = ec2Task.addContainer('MinecraftServer', {
       image: ecs.ContainerImage.fromRegistry('itzg/minecraft-server:latest'),
       memoryReservationMiB: 1024,
       environment: {
@@ -75,24 +75,24 @@ export class CdkMinecraftStack extends cdk.Stack {
       protocol: ecs.Protocol.TCP,
     })
     ec2Task.addVolume({
-      name: 'MinecraftEfsVolume',
+      name: 'ServerFilesEfs',
       efsVolumeConfiguration: {
         fileSystemId: fileSystem.fileSystemId,
       },
     })
     container.addMountPoints({
       containerPath: '/data',
-      sourceVolume: 'MinecraftEfsVolume',
+      sourceVolume: 'ServerFilesEfs',
       readOnly: false,
     })
 
-    const service = new ecs.Ec2Service(this, 'MinecraftService', {
+    const service = new ecs.Ec2Service(this, 'Ec2Service', {
       cluster,
       taskDefinition: ec2Task,
     })
 
     // DNS Update
-    const dnsUpdateLambda = new lambda.Function(this, 'MinecraftDnsUpdate', {
+    const dnsUpdateLambda = new lambda.Function(this, 'DnsUpdate', {
       description: 'Set Route53 record for Minecraft',
       vpc,
       runtime: lambda.Runtime.PYTHON_3_7,
@@ -108,7 +108,7 @@ export class CdkMinecraftStack extends cdk.Stack {
     dnsUpdateLambda.role?.addToPrincipalPolicy(new iam.PolicyStatement({ resources: ['*'], actions: ['route53:*'] }))
     dnsUpdateLambda.role?.addToPrincipalPolicy(new iam.PolicyStatement({ resources: ['*'], actions: ['ec2:DescribeInstance'] }))
 
-    const rule = new events.Rule(this, 'MinecraftInstanceLaunchRule', {
+    const rule = new events.Rule(this, 'Ec2InstanceLaunchRule', {
       eventPattern: {
         source: ['aws.autoscaling'],
         detailType: ['EC2 Instance Launch Successful'],
