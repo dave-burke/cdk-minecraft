@@ -106,7 +106,7 @@ export class CdkMinecraftStack extends cdk.Stack {
       },
     })
     dnsUpdateLambda.role?.addToPrincipalPolicy(new iam.PolicyStatement({ resources: ['*'], actions: ['route53:*'] }))
-    dnsUpdateLambda.role?.addToPrincipalPolicy(new iam.PolicyStatement({ resources: ['*'], actions: ['ec2:DescribeInstance'] }))
+    dnsUpdateLambda.role?.addToPrincipalPolicy(new iam.PolicyStatement({ resources: ['*'], actions: ['ec2:DescribeInstance*'] }))
 
     const rule = new events.Rule(this, 'Ec2InstanceLaunchRule', {
       eventPattern: {
