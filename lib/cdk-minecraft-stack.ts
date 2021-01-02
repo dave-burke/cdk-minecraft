@@ -95,7 +95,6 @@ export class CdkMinecraftStack extends cdk.Stack {
     // DNS Update
     const dnsUpdateLambda = new lambda.Function(this, 'DnsUpdate', {
       description: 'Set Route53 record for Minecraft',
-      vpc,
       runtime: lambda.Runtime.PYTHON_3_7,
       handler: 'dns_update.handler',
       memorySize: 128,
