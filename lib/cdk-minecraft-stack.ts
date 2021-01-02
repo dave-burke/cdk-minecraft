@@ -112,7 +112,9 @@ export class CdkMinecraftStack extends cdk.Stack {
       eventPattern: {
         source: ['aws.autoscaling'],
         detailType: ['EC2 Instance Launch Successful'],
-        detail: [ autoScalingGroup.autoScalingGroupName ],
+        detail: {
+          'AutoScalingGroupName': [ autoScalingGroup.autoScalingGroupName ],
+        },
       },
       targets: [ new targets.LambdaFunction(dnsUpdateLambda) ],
     });
