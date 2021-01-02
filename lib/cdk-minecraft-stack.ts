@@ -97,7 +97,7 @@ export class CdkMinecraftStack extends cdk.Stack {
       description: 'Set Route53 record for Minecraft',
       vpc,
       runtime: lambda.Runtime.PYTHON_3_7,
-      handler: 'DnsUpdate.handler',
+      handler: 'dns_update.handler',
       memorySize: 128,
       timeout: cdk.Duration.seconds(20),
       code: lambda.Code.fromAsset('lambda'),
