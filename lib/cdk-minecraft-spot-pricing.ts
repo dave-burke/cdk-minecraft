@@ -18,6 +18,7 @@ export interface CdkMinecraftSpotPricingProps {
   instanceType?: string,
   spotPrice?: string,
   port?: number,
+  ec2KeyName?: string,
   enableAutomaticBackups?: boolean,
   efsRemovalPolicy?: cdk.RemovalPolicy, 
   dnsConfig?: CdkMinecraftSpotPricingDnsConfig,
@@ -49,7 +50,11 @@ export class CdkMinecraftSpotPricing extends cdk.Construct {
       vpcSubnets: {
         subnets: cluster.vpc.publicSubnets
       },
+      keyName: props.ec2KeyName,
     })
+    if(props.ec2KeyName !== undefined) {
+      this.autoScalingGroup.connections.allowFromAnyIpv4(ec2.Port.tcp(22))
+    }
 
     // File system
     const fileSystem = new efs.FileSystem(this, 'ServerFiles', {

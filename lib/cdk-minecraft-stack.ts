@@ -32,6 +32,7 @@ export class CdkMinecraftStack extends cdk.Stack {
         recordName: DNS_RECORD_NAME,
       },
       containerEnvironment: CONTAINER_ENV,
+      ec2KeyName: process.env.EC2_KEY_NAME,
     })
 
     new autoscaling.ScheduledAction(this, 'ScaleDown', {
