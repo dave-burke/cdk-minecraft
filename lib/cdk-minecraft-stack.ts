@@ -14,7 +14,8 @@ import * as fs from 'fs'
 
 dotenv.config()
 
-const containerEnvironment = dotenv.parse(fs.readFileSync('.env.container'))
+const CONTAINER_ENV_FILE = '.env.container'
+const containerEnvironment = fs.existsSync(CONTAINER_ENV_FILE) ? dotenv.parse(fs.readFileSync('.env.container')) : {}
 
 const DEBUG: boolean = process.env.DEBUG ? Boolean(process.env.DEBUG) : false 
 const TIMEZONE_OFFSET: number = Number(process.env.TIMEZONE_OFFSET) ?? 0
