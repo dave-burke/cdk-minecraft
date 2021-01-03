@@ -12,6 +12,7 @@ TIMEZONE_OFFSET=-5
 CONTAINER_ENV={"DIFFICULTY":"normal"}
 HOSTED_ZONE_ID="ABC123"
 DNS_RECORD_NAME="minecraft.example.com"
+EC2_KEY_NAME="my-key"
 ```
 
 ## Useful commands
