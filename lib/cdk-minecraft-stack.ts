@@ -34,6 +34,7 @@ export class CdkMinecraftStack extends cdk.Stack {
         hostedZoneId: HOSTED_ZONE_ID,
         recordName: DNS_RECORD_NAME,
       },
+      tagName: process.env.CONTAINER_TAG_NAME,
       containerEnvironment,
       ec2KeyName: process.env.EC2_KEY_NAME,
     })

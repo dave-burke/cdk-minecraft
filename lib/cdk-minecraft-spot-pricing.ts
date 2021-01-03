@@ -15,6 +15,7 @@ export interface CdkMinecraftSpotPricingDnsConfig {
 }
 
 export interface CdkMinecraftSpotPricingProps {
+  tagName?: string,
   instanceType?: string,
   spotPrice?: string,
   port?: number,
@@ -69,7 +70,7 @@ export class CdkMinecraftSpotPricing extends cdk.Construct {
     // Task definition
     const ec2Task = new ecs.Ec2TaskDefinition(this, 'Ec2Task')
     const container = ec2Task.addContainer('MinecraftServer', {
-      image: ecs.ContainerImage.fromRegistry('itzg/minecraft-server:latest'),
+      image: ecs.ContainerImage.fromRegistry(`itzg/minecraft-server:${props.tagName ?? 'latest'}`),
       memoryReservationMiB: 1024,
       environment: props.containerEnvironment,
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'Minecraft' })
