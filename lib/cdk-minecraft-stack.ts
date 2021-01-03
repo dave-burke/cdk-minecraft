@@ -10,12 +10,14 @@ import * as path from 'path'
 import * as targets from '@aws-cdk/aws-events-targets'
 import { CdkMinecraftSpotPricing, CdkMinecraftSpotPricingProps, CdkMinecraftSpotPricingDnsConfig } from './cdk-minecraft-spot-pricing'
 import * as dotenv from 'dotenv'
+import * as fs from 'fs'
 
 dotenv.config()
 
+const containerEnvironment = dotenv.parse(fs.readFileSync('.env.container'))
+
 const DEBUG: boolean = process.env.DEBUG ? Boolean(process.env.DEBUG) : false 
 const TIMEZONE_OFFSET: number = Number(process.env.TIMEZONE_OFFSET) ?? 0
-const CONTAINER_ENV: string = process.env.CONTAINER_ENV ? JSON.parse(process.env.CONTAINER_ENV) : {}
 const HOSTED_ZONE_ID: string = process.env.HOSTED_ZONE_ID ?? ''
 const DNS_RECORD_NAME: string = process.env.DNS_RECORD_NAME ?? ''
 
@@ -31,7 +33,7 @@ export class CdkMinecraftStack extends cdk.Stack {
         hostedZoneId: HOSTED_ZONE_ID,
         recordName: DNS_RECORD_NAME,
       },
-      containerEnvironment: CONTAINER_ENV,
+      containerEnvironment,
       ec2KeyName: process.env.EC2_KEY_NAME,
     })
 
