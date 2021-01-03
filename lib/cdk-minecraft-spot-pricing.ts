@@ -32,7 +32,8 @@ export class CdkMinecraftSpotPricing extends cdk.Construct {
 
     props.instanceType = props.instanceType ?? 't3.medium'
     props.port = props.port ?? 25565
-    props.containerEnvironment = props.containerEnvironment ?? { 'EULA': 'true' }
+    props.containerEnvironment = props.containerEnvironment ?? { }
+    props.containerEnvironment.EULA = 'true'
 
     // Cluster
     const vpc = new ec2.Vpc(this, 'Vpc', { natGateways: 0 })
