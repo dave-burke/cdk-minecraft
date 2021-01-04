@@ -27,6 +27,7 @@ export class CdkMinecraftStack extends cdk.Stack {
     super(scope, id, props)
 
     const server = new CdkMinecraftSpotPricing(this, 'MinecraftServer', {
+      instanceType: process.env.INSTANCE_TYPE,
       spotPrice: process.env.SPOT_PRICE,
       enableAutomaticBackups: !DEBUG,
       efsRemovalPolicy: DEBUG ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN,
