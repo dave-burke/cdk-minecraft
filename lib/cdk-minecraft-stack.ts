@@ -43,13 +43,15 @@ export class CdkMinecraftStack extends cdk.Stack {
 
     new autoscaling.ScheduledAction(this, 'ScaleDown', {
       autoScalingGroup: server.autoScalingGroup,
-      schedule: autoscaling.Schedule.cron({ hour: `${22 + TIMEZONE_OFFSET}`, minute: '0' }),
-      desiredCapacity: 0,
+      schedule: autoscaling.Schedule.cron({ hour: `${22 - TIMEZONE_OFFSET}`, minute: '0' }),
+      minCapacity: 0,
+      maxCapacity: 0,
     })
     new autoscaling.ScheduledAction(this, 'ScaleUp', {
       autoScalingGroup: server.autoScalingGroup,
-      schedule: autoscaling.Schedule.cron({ hour: `${15 + TIMEZONE_OFFSET}`, minute: '0' }),
-      desiredCapacity: 1,
+      schedule: autoscaling.Schedule.cron({ hour: `${15 - TIMEZONE_OFFSET}`, minute: '0' }),
+      minCapacity: 1,
+      maxCapacity: 1,
     })
 
   }

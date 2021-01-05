@@ -48,7 +48,8 @@ export class CdkMinecraftSpotPricing extends cdk.Construct {
     this.autoScalingGroup = cluster.addCapacity('MinecraftServer', {
       instanceType: props.instanceType,
       machineImage: props.machineImage,
-      desiredCapacity: 1,
+      minCapacity: 1,
+      maxCapacity: 1,
       spotPrice: props.spotPrice,
       vpcSubnets: {
         subnets: cluster.vpc.publicSubnets
