@@ -27,7 +27,10 @@ export class CdkMinecraftStack extends cdk.Stack {
     super(scope, id, props)
 
     const server = new CdkMinecraftSpotPricing(this, 'MinecraftServer', {
-      instanceType: process.env.INSTANCE_TYPE,
+      instanceType: new ec2.InstanceType('t4g.medium'),
+      machineImage: ecs.EcsOptimizedImage.amazonLinux2(ecs.AmiHardwareType.ARM),
+      tagName: 'multiarch',
+      containerEnvironment,
       spotPrice: process.env.SPOT_PRICE,
       enableAutomaticBackups: !DEBUG,
       efsRemovalPolicy: DEBUG ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN,
@@ -35,8 +38,6 @@ export class CdkMinecraftStack extends cdk.Stack {
         hostedZoneId: HOSTED_ZONE_ID,
         recordName: DNS_RECORD_NAME,
       },
-      tagName: process.env.CONTAINER_TAG_NAME,
-      containerEnvironment,
       ec2KeyName: process.env.EC2_KEY_NAME,
     })
 

@@ -16,7 +16,8 @@ export interface CdkMinecraftSpotPricingDnsConfig {
 
 export interface CdkMinecraftSpotPricingProps {
   tagName?: string,
-  instanceType?: string,
+  instanceType?: ec2.InstanceType,
+  machineImage?: ecs.EcsOptimizedImage,
   spotPrice?: string,
   port?: number,
   ec2KeyName?: string,
@@ -32,7 +33,8 @@ export class CdkMinecraftSpotPricing extends cdk.Construct {
   constructor(scope: cdk.Construct, id: string, props: CdkMinecraftSpotPricingProps = {}) {
     super(scope, id)
 
-    props.instanceType = props.instanceType ?? 't3.medium'
+    props.instanceType = props.instanceType ?? new ec2.InstanceType('t3.medium')
+    props.machineImage = props.machineImage ?? ecs.EcsOptimizedImage.amazonLinux2()
     props.port = props.port ?? 25565
     props.containerEnvironment = props.containerEnvironment ?? { }
     props.containerEnvironment.EULA = 'true'
@@ -44,8 +46,8 @@ export class CdkMinecraftSpotPricing extends cdk.Construct {
 
     // Autoscaling
     this.autoScalingGroup = cluster.addCapacity('MinecraftServer', {
-      instanceType: new ec2.InstanceType(props.instanceType),
-      machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
+      instanceType: props.instanceType,
+      machineImage: props.machineImage,
       desiredCapacity: 1,
       spotPrice: props.spotPrice,
       vpcSubnets: {
