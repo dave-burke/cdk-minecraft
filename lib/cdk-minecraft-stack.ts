@@ -18,7 +18,7 @@ const CONTAINER_ENV_FILE = '.env.container'
 const containerEnvironment = fs.existsSync(CONTAINER_ENV_FILE) ? dotenv.parse(fs.readFileSync('.env.container')) : {}
 
 const DEBUG: boolean = process.env.DEBUG ? Boolean(process.env.DEBUG) : false 
-const TIMEZONE_OFFSET: number = Number(process.env.TIMEZONE_OFFSET) ?? 0
+const TIMEZONE_OFFSET: number = Number(process.env.TIMEZONE_OFFSET) == NaN ? Number(process.env.TIMEZONE_OFFSET) : 0
 const HOSTED_ZONE_ID: string = process.env.HOSTED_ZONE_ID ?? ''
 const DNS_RECORD_NAME: string = process.env.DNS_RECORD_NAME ?? ''
 
