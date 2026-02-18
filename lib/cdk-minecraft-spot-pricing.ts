@@ -6,6 +6,7 @@ import * as efs from "aws-cdk-lib/aws-efs";
 import * as events from "aws-cdk-lib/aws-events";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as logs from "aws-cdk-lib/aws-logs";
 import * as targets from "aws-cdk-lib/aws-events-targets";
 import { Construct } from "constructs";
 
@@ -25,6 +26,12 @@ export interface CdkMinecraftSpotPricingProps {
   efsRemovalPolicy?: cdk.RemovalPolicy;
   dnsConfig?: CdkMinecraftSpotPricingDnsConfig;
   containerEnvironment?: any;
+  containerInsights?: boolean;
+  entryPoint?: string[];
+  command?: string[];
+  logGroupName?: string;
+  logGroupRetentionInDays?: logs.RetentionDays;
+  logStreamPrefix?: string;
 }
 
 export class CdkMinecraftSpotPricing extends Construct {
@@ -44,27 +51,49 @@ export class CdkMinecraftSpotPricing extends Construct {
     props.port = props.port ?? 25565;
     props.containerEnvironment = props.containerEnvironment ?? {};
     props.containerEnvironment.EULA = "true";
+    props.logStreamPrefix = props.logStreamPrefix ?? "minecraft-server";
+    props.logGroupRetentionInDays =
+      props.logGroupRetentionInDays ?? logs.RetentionDays.ONE_WEEK;
 
     // Cluster
     const vpc = new ec2.Vpc(this, "Vpc", { natGateways: 0 });
-    const cluster = new ecs.Cluster(this, "EcsCluster", { vpc });
+    const cluster = new ecs.Cluster(this, "EcsCluster", {
+      vpc,
+      containerInsights: props.containerInsights ?? false,
+    });
     cluster.connections.allowFromAnyIpv4(ec2.Port.tcp(props.port));
 
     // Autoscaling
     this.autoScalingGroup = cluster.addCapacity("MinecraftServer", {
       instanceType: props.instanceType,
       machineImage: props.machineImage,
-      minCapacity: 1,
+      minCapacity: 0,
       maxCapacity: 1,
       spotPrice: props.spotPrice,
       vpcSubnets: {
         subnets: cluster.vpc.publicSubnets,
       },
       keyName: props.ec2KeyName,
+      // Enable managed termination protection (required for capacity provider)
+      newInstancesProtectedFromScaleIn: true,
     });
     if (props.ec2KeyName !== undefined) {
       this.autoScalingGroup.connections.allowFromAnyIpv4(ec2.Port.tcp(22));
     }
+
+    const capacityProvider = new ecs.AsgCapacityProvider(
+      this,
+      "CapacityProvider",
+      {
+        autoScalingGroup: this.autoScalingGroup,
+        enableManagedScaling: true,
+        enableManagedTerminationProtection: true,
+        targetCapacityPercent: 100,
+        maximumScalingStepSize: 1,
+        minimumScalingStepSize: 1,
+      },
+    );
+    cluster.addAsgCapacityProvider(capacityProvider);
 
     // File system
     const fileSystem = new efs.FileSystem(this, "ServerFiles", {
@@ -76,15 +105,33 @@ export class CdkMinecraftSpotPricing extends Construct {
     });
     fileSystem.connections.allowDefaultPortFrom(this.autoScalingGroup);
 
+    // Optional CloudWatch Log Group
+    let logDriver: ecs.LogDriver | undefined;
+    if (props.logGroupName !== undefined) {
+      const logGroup = new logs.LogGroup(this, "LogGroup", {
+        logGroupName: props.logGroupName,
+        retention: props.logGroupRetentionInDays,
+        removalPolicy: cdk.RemovalPolicy.RETAIN,
+      });
+      logDriver = ecs.LogDrivers.awsLogs({
+        logGroup,
+        streamPrefix: props.logStreamPrefix!,
+      });
+    }
+
     // Task definition
-    const ec2Task = new ecs.Ec2TaskDefinition(this, "Ec2Task");
+    const ec2Task = new ecs.Ec2TaskDefinition(this, "Ec2Task", {
+      networkMode: ecs.NetworkMode.BRIDGE,
+    });
     const container = ec2Task.addContainer("MinecraftServer", {
       image: ecs.ContainerImage.fromRegistry(
         `itzg/minecraft-server:${props.tagName ?? "latest"}`,
       ),
       memoryReservationMiB: 1024,
       environment: props.containerEnvironment,
-      logging: ecs.LogDrivers.awsLogs({ streamPrefix: "Minecraft" }),
+      logging: logDriver,
+      entryPoint: props.entryPoint,
+      command: props.command,
     });
     container.addPortMappings({
       containerPort: props.port,
@@ -103,9 +150,16 @@ export class CdkMinecraftSpotPricing extends Construct {
       readOnly: false,
     });
 
-    const service = new ecs.Ec2Service(this, "Ec2Service", {
+    new ecs.Ec2Service(this, "Ec2Service", {
       cluster,
       taskDefinition: ec2Task,
+      capacityProviderStrategies: [
+        {
+          capacityProvider: capacityProvider.capacityProviderName,
+          weight: 1,
+          base: 0,
+        },
+      ],
     });
 
     // DNS Update
@@ -122,8 +176,14 @@ export class CdkMinecraftSpotPricing extends Construct {
           RecordName: props.dnsConfig.recordName,
         },
       });
+      // Route53 permission
       dnsUpdateLambda.role?.addToPrincipalPolicy(
-        new iam.PolicyStatement({ resources: ["*"], actions: ["route53:*"] }),
+        new iam.PolicyStatement({
+          actions: ["route53:ChangeResourceRecordSets"],
+          resources: [
+            `arn:aws:route53:::hostedzone/${props.dnsConfig.hostedZoneId}`,
+          ],
+        }),
       );
       dnsUpdateLambda.role?.addToPrincipalPolicy(
         new iam.PolicyStatement({
@@ -132,7 +192,7 @@ export class CdkMinecraftSpotPricing extends Construct {
         }),
       );
 
-      const rule = new events.Rule(this, "Ec2InstanceLaunchRule", {
+      new events.Rule(this, "Ec2InstanceLaunchRule", {
         eventPattern: {
           source: ["aws.autoscaling"],
           detailType: ["EC2 Instance Launch Successful"],
