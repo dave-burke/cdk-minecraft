@@ -42,6 +42,8 @@ export class CdkMinecraftStack extends Stack {
             hostedZoneId: HOSTED_ZONE_ID,
             recordName: DNS_RECORD_NAME,
           },
+      containerInsights: false,
+      logGroupName: process.env.LOG_GROUP_NAME,
       ec2KeyName: process.env.EC2_KEY_NAME,
     });
 
