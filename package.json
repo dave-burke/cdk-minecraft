@@ -7,21 +7,22 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "test": "jest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "cdk": "cdk"
   },
   "devDependencies": {
     "@types/node": "^20.x",
+    "@vitest/coverage-v8": "^4.0.18",
     "aws-cdk": "^2.x",
     "ts-node": "^10.x",
-    "typescript": "^5.x"
+    "typescript": "^5.x",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.x",
     "constructs": "^10.x",
-    "dotenv": "^16.x",
     "dotenv": "^8.2.0",
-    "source-map-support": "^0.5.16",
     "source-map-support": "^0.5.x"
   }
 }

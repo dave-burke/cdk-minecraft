@@ -18,7 +18,8 @@
 
     "experimentalDecorators": true,
 
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "isolatedModules": true
   },
   "exclude": ["cdk.out", "node_modules"]
 }
