@@ -36,10 +36,12 @@ export class CdkMinecraftStack extends Stack {
       efsRemovalPolicy: DEBUG
         ? cdk.RemovalPolicy.DESTROY
         : cdk.RemovalPolicy.RETAIN,
-      dnsConfig: {
-        hostedZoneId: HOSTED_ZONE_ID,
-        recordName: DNS_RECORD_NAME,
-      },
+      dnsConfig: DEBUG
+        ? undefined
+        : {
+            hostedZoneId: HOSTED_ZONE_ID,
+            recordName: DNS_RECORD_NAME,
+          },
       ec2KeyName: process.env.EC2_KEY_NAME,
     });
 
