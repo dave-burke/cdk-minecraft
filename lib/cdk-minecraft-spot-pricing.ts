@@ -64,36 +64,52 @@ export class CdkMinecraftSpotPricing extends Construct {
     cluster.connections.allowFromAnyIpv4(ec2.Port.tcp(props.port));
 
     // Autoscaling
-    this.autoScalingGroup = cluster.addCapacity("MinecraftServer", {
+    const launchTemplate = new ec2.LaunchTemplate(this, "LaunchTemplate", {
       instanceType: props.instanceType,
       machineImage: props.machineImage,
-      minCapacity: 0,
-      maxCapacity: 1,
-      spotPrice: props.spotPrice,
-      vpcSubnets: {
-        subnets: cluster.vpc.publicSubnets,
-      },
-      keyName: props.ec2KeyName,
-      // Enable managed termination protection (required for capacity provider)
-      newInstancesProtectedFromScaleIn: true,
+      keyPair: props.ec2KeyName
+        ? ec2.KeyPair.fromKeyPairName(this, "KeyPair", props.ec2KeyName)
+        : undefined,
+      spotOptions: props.spotPrice
+        ? { maxPrice: parseFloat(props.spotPrice) }
+        : undefined,
+      userData: (() => {
+        const ud = ec2.UserData.forLinux();
+        ud.addCommands(
+          `echo ECS_CLUSTER=${cluster.clusterName} >> /etc/ecs/ecs.config`,
+        );
+        return ud;
+      })(),
+      role: new iam.Role(this, "InstanceRole", {
+        assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
+        managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName(
+            "service-role/AmazonEC2ContainerServiceforEC2Role",
+          ),
+        ],
+      }),
     });
+
+    this.autoScalingGroup = new autoscaling.AutoScalingGroup(
+      this,
+      "MinecraftServer",
+      {
+        vpc,
+        launchTemplate,
+        minCapacity: 0,
+        maxCapacity: 1,
+        vpcSubnets: {
+          subnets: cluster.vpc.publicSubnets,
+        },
+        newInstancesProtectedFromScaleIn: true,
+      },
+    );
+    this.autoScalingGroup.connections.allowFromAnyIpv4(
+      ec2.Port.tcp(props.port),
+    );
     if (props.ec2KeyName !== undefined) {
       this.autoScalingGroup.connections.allowFromAnyIpv4(ec2.Port.tcp(22));
     }
-
-    const capacityProvider = new ecs.AsgCapacityProvider(
-      this,
-      "CapacityProvider",
-      {
-        autoScalingGroup: this.autoScalingGroup,
-        enableManagedScaling: true,
-        enableManagedTerminationProtection: true,
-        targetCapacityPercent: 100,
-        maximumScalingStepSize: 1,
-        minimumScalingStepSize: 1,
-      },
-    );
-    cluster.addAsgCapacityProvider(capacityProvider);
 
     // File system
     const fileSystem = new efs.FileSystem(this, "ServerFiles", {
@@ -150,6 +166,20 @@ export class CdkMinecraftSpotPricing extends Construct {
       readOnly: false,
     });
 
+    // Autoscaling
+    const capacityProvider = new ecs.AsgCapacityProvider(
+      this,
+      "CapacityProvider",
+      {
+        autoScalingGroup: this.autoScalingGroup,
+        enableManagedScaling: true,
+        enableManagedTerminationProtection: true,
+        targetCapacityPercent: 100,
+        maximumScalingStepSize: 1,
+        minimumScalingStepSize: 1,
+      },
+    );
+    cluster.addAsgCapacityProvider(capacityProvider);
     new ecs.Ec2Service(this, "Ec2Service", {
       cluster,
       taskDefinition: ec2Task,
