@@ -78,6 +78,7 @@ export class CdkMinecraftSpotPricing extends Construct {
       instanceType: props.instanceType,
       securityGroup,
       machineImage: props.machineImage,
+      associatePublicIpAddress: true,
       keyPair: props.ec2KeyName
         ? ec2.KeyPair.fromKeyPairName(this, "KeyPair", props.ec2KeyName)
         : undefined,

@@ -29,7 +29,6 @@ export class CdkMinecraftStack extends Stack {
     const server = new CdkMinecraftSpotPricing(this, "MinecraftServer", {
       instanceType: new ec2.InstanceType("t4g.medium"),
       machineImage: ecs.EcsOptimizedImage.amazonLinux2(ecs.AmiHardwareType.ARM),
-      tagName: "multiarch",
       containerEnvironment,
       spotPrice: process.env.SPOT_PRICE,
       enableAutomaticBackups: !DEBUG,
