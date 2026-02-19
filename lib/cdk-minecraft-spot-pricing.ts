@@ -59,7 +59,9 @@ export class CdkMinecraftSpotPricing extends Construct {
     const vpc = new ec2.Vpc(this, "Vpc", { natGateways: 0 });
     const cluster = new ecs.Cluster(this, "EcsCluster", {
       vpc,
-      containerInsights: props.containerInsights ?? false,
+      containerInsightsV2: props.containerInsights
+        ? ecs.ContainerInsights.ENABLED
+        : ecs.ContainerInsights.DISABLED,
     });
 
     // Security Group
