@@ -61,11 +61,20 @@ export class CdkMinecraftSpotPricing extends Construct {
       vpc,
       containerInsights: props.containerInsights ?? false,
     });
-    cluster.connections.allowFromAnyIpv4(ec2.Port.tcp(props.port));
+
+    // Security Group
+    const securityGroup = new ec2.SecurityGroup(this, "InstanceSecurityGroup", {
+      vpc,
+    });
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(props.port));
+    if (props.ec2KeyName !== undefined) {
+      securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22));
+    }
 
     // Autoscaling
     const launchTemplate = new ec2.LaunchTemplate(this, "LaunchTemplate", {
       instanceType: props.instanceType,
+      securityGroup,
       machineImage: props.machineImage,
       keyPair: props.ec2KeyName
         ? ec2.KeyPair.fromKeyPairName(this, "KeyPair", props.ec2KeyName)
@@ -104,12 +113,6 @@ export class CdkMinecraftSpotPricing extends Construct {
         newInstancesProtectedFromScaleIn: true,
       },
     );
-    this.autoScalingGroup.connections.allowFromAnyIpv4(
-      ec2.Port.tcp(props.port),
-    );
-    if (props.ec2KeyName !== undefined) {
-      this.autoScalingGroup.connections.allowFromAnyIpv4(ec2.Port.tcp(22));
-    }
 
     // File system
     const fileSystem = new efs.FileSystem(this, "ServerFiles", {
