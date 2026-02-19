@@ -149,7 +149,8 @@ export class CdkMinecraftSpotPricing extends Construct {
       image: ecs.ContainerImage.fromRegistry(
         `itzg/minecraft-server:${props.tagName ?? "latest"}`,
       ),
-      memoryReservationMiB: 1024,
+      memoryReservationMiB: 2048,
+      memoryLimitMiB: 3072,
       environment: props.containerEnvironment,
       logging: logDriver,
       entryPoint: props.entryPoint,
@@ -196,6 +197,14 @@ export class CdkMinecraftSpotPricing extends Construct {
           base: 0,
         },
       ],
+      desiredCount: 1,
+      maxHealthyPercent: 100,
+      minHealthyPercent: 0,
+      circuitBreaker: {
+        rollback: true,
+      },
+      placementConstraints: [ecs.PlacementConstraint.distinctInstances()],
+      enableExecuteCommand: true,
     });
 
     // DNS Update
