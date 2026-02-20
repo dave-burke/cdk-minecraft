@@ -1,7 +1,5 @@
 import * as cdk from "aws-cdk-lib";
-import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as autoscaling from "aws-cdk-lib/aws-autoscaling";
-import * as ecs from "aws-cdk-lib/aws-ecs";
 import { CdkMinecraftSpotPricing } from "./cdk-minecraft-spot-pricing";
 import { Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
