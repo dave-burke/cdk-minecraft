@@ -47,7 +47,7 @@ export class CdkMinecraftSpotPricing extends Construct {
     super(scope, id);
 
     props.instanceType =
-      props.instanceType ?? new ec2.InstanceType("t3g.medium");
+      props.instanceType ?? new ec2.InstanceType("t4g.medium");
     props.machineImage =
       props.machineImage ??
       ecs.EcsOptimizedImage.amazonLinux2023(ecs.AmiHardwareType.ARM);
