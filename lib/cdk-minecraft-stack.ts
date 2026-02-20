@@ -41,25 +41,52 @@ export class CdkMinecraftStack extends Stack {
       ec2KeyName: process.env.EC2_KEY_NAME,
     });
 
-    new autoscaling.ScheduledAction(this, "ScaleDown", {
+    // Weekday schedule: 3PM-11PM
+    new autoscaling.ScheduledAction(this, "ScaleUpWeekdays", {
       autoScalingGroup: server.autoScalingGroup,
       schedule: autoscaling.Schedule.cron({
-        hour: `${22 - TIMEZONE_OFFSET}`,
-        minute: "0",
-      }),
-      minCapacity: 0,
-      desiredCapacity: 0,
-      maxCapacity: 0,
-    });
-    new autoscaling.ScheduledAction(this, "ScaleUp", {
-      autoScalingGroup: server.autoScalingGroup,
-      schedule: autoscaling.Schedule.cron({
+        weekDay: "1-5",
         hour: `${15 - TIMEZONE_OFFSET}`,
         minute: "0",
       }),
       minCapacity: 0,
       desiredCapacity: 1,
       maxCapacity: 1,
+    });
+    new autoscaling.ScheduledAction(this, "ScaleDownWeekdays", {
+      autoScalingGroup: server.autoScalingGroup,
+      schedule: autoscaling.Schedule.cron({
+        weekDay: "1-5",
+        hour: `${23 - TIMEZONE_OFFSET}`,
+        minute: "0",
+      }),
+      minCapacity: 0,
+      desiredCapacity: 0,
+      maxCapacity: 0,
+    });
+
+    // Weekend schedule: 7AM-9PM
+    new autoscaling.ScheduledAction(this, "ScaleUpWeekends", {
+      autoScalingGroup: server.autoScalingGroup,
+      schedule: autoscaling.Schedule.cron({
+        weekDay: "0,6",
+        hour: `${7 - TIMEZONE_OFFSET}`,
+        minute: "0",
+      }),
+      minCapacity: 0,
+      desiredCapacity: 1,
+      maxCapacity: 1,
+    });
+    new autoscaling.ScheduledAction(this, "ScaleDownWeekends", {
+      autoScalingGroup: server.autoScalingGroup,
+      schedule: autoscaling.Schedule.cron({
+        weekDay: "0,6",
+        hour: `${21 - TIMEZONE_OFFSET}`,
+        minute: "0",
+      }),
+      minCapacity: 0,
+      desiredCapacity: 0,
+      maxCapacity: 0,
     });
   }
 }
