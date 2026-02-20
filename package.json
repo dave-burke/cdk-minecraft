@@ -9,7 +9,10 @@
     "watch": "tsc -w",
     "test": "vitest run",
     "test:watch": "vitest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "deploy": "npm run build && npm run cdk deploy",
+    "synth": "npm run build && npm run cdk synth",
+    "diff": "npm run build && npm run cdk diff"
   },
   "devDependencies": {
     "@types/node": "^20.x",
