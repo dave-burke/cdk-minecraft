@@ -195,7 +195,8 @@ export class CdkMinecraftSpotPricing extends Construct {
       },
     );
     cluster.addAsgCapacityProvider(capacityProvider);
-    new ecs.Ec2Service(this, "Ec2Service", {
+
+    const ec2Service = new ecs.Ec2Service(this, "Ec2Service", {
       cluster,
       taskDefinition: ec2Task,
       capacityProviderStrategies: [
@@ -214,6 +215,11 @@ export class CdkMinecraftSpotPricing extends Construct {
       placementConstraints: [ecs.PlacementConstraint.distinctInstances()],
       enableExecuteCommand: true,
     });
+    // Ensure ECS service is deleted before the capacity provider association
+    const cfnCapacityProviderAssoc = cluster.node.findChild(
+      "ClusterCPAssociation",
+    ) as cdk.CfnResource;
+    cfnCapacityProviderAssoc.node.addDependency(ec2Service);
 
     // DNS Update
     if (props.dnsConfig !== undefined) {
