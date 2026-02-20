@@ -121,16 +121,6 @@ export class CdkMinecraftSpotPricing extends Construct {
       },
     );
 
-    // File system
-    const fileSystem = new efs.FileSystem(this, "ServerFiles", {
-      vpc: cluster.vpc,
-      encrypted: true,
-      enableAutomaticBackups: props.enableAutomaticBackups,
-      lifecyclePolicy: efs.LifecyclePolicy.AFTER_7_DAYS,
-      removalPolicy: props.efsRemovalPolicy,
-    });
-    fileSystem.connections.allowDefaultPortFrom(this.autoScalingGroup);
-
     // Optional CloudWatch Log Group
     let logDriver: ecs.LogDriver | undefined;
     if (props.logGroupName !== undefined) {
@@ -153,6 +143,13 @@ export class CdkMinecraftSpotPricing extends Construct {
       image: ecs.ContainerImage.fromRegistry(
         `itzg/minecraft-server:${props.tagName ?? "latest"}`,
       ),
+      portMappings: [
+        {
+          containerPort: props.port,
+          hostPort: props.port,
+          protocol: ecs.Protocol.TCP,
+        },
+      ],
       memoryReservationMiB: 2048,
       memoryLimitMiB: 3072,
       environment: props.containerEnvironment,
@@ -160,17 +157,24 @@ export class CdkMinecraftSpotPricing extends Construct {
       entryPoint: props.entryPoint,
       command: props.command,
     });
-    container.addPortMappings({
-      containerPort: props.port,
-      hostPort: props.port,
-      protocol: ecs.Protocol.TCP,
+
+    // File system
+    const fileSystem = new efs.FileSystem(this, "ServerFiles", {
+      vpc: cluster.vpc,
+      encrypted: true,
+      enableAutomaticBackups: props.enableAutomaticBackups,
+      lifecyclePolicy: efs.LifecyclePolicy.AFTER_7_DAYS,
+      removalPolicy: props.efsRemovalPolicy,
     });
+    fileSystem.connections.allowDefaultPortFrom(this.autoScalingGroup);
+
     ec2Task.addVolume({
       name: "ServerFilesEfs",
       efsVolumeConfiguration: {
         fileSystemId: fileSystem.fileSystemId,
       },
     });
+
     container.addMountPoints({
       containerPath: "/data",
       sourceVolume: "ServerFilesEfs",
