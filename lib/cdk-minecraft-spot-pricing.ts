@@ -167,6 +167,7 @@ export class CdkMinecraftSpotPricing extends Construct {
       removalPolicy: props.efsRemovalPolicy,
     });
     fileSystem.connections.allowDefaultPortFrom(this.autoScalingGroup);
+    fileSystem.node.addDependency(securityGroup);
 
     ec2Task.addVolume({
       name: "ServerFilesEfs",
@@ -194,6 +195,7 @@ export class CdkMinecraftSpotPricing extends Construct {
         minimumScalingStepSize: 1,
       },
     );
+    capacityProvider.node.addDependency(this.autoScalingGroup);
     cluster.addAsgCapacityProvider(capacityProvider);
 
     const ec2Service = new ecs.Ec2Service(this, "Ec2Service", {
@@ -215,11 +217,7 @@ export class CdkMinecraftSpotPricing extends Construct {
       placementConstraints: [ecs.PlacementConstraint.distinctInstances()],
       enableExecuteCommand: true,
     });
-    // Ensure ECS service is deleted before the capacity provider association
-    const cfnCapacityProviderAssoc = cluster.node.findChild(
-      "ClusterCPAssociation",
-    ) as cdk.CfnResource;
-    cfnCapacityProviderAssoc.node.addDependency(ec2Service);
+    ec2Service.node.addDependency(fileSystem);
 
     // DNS Update
     if (props.dnsConfig !== undefined) {
@@ -251,7 +249,7 @@ export class CdkMinecraftSpotPricing extends Construct {
         }),
       );
 
-      new events.Rule(this, "Ec2InstanceLaunchRule", {
+      const rule = new events.Rule(this, "Ec2InstanceLaunchRule", {
         eventPattern: {
           source: ["aws.autoscaling"],
           detailType: ["EC2 Instance Launch Successful"],
@@ -261,6 +259,7 @@ export class CdkMinecraftSpotPricing extends Construct {
         },
         targets: [new targets.LambdaFunction(dnsUpdateLambda)],
       });
+      rule.node.addDependency(ec2Service);
     }
   }
 }
