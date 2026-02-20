@@ -27,8 +27,6 @@ export class CdkMinecraftStack extends Stack {
     super(scope, id, props);
 
     const server = new CdkMinecraftSpotPricing(this, "MinecraftServer", {
-      instanceType: new ec2.InstanceType("t4g.medium"),
-      machineImage: ecs.EcsOptimizedImage.amazonLinux2(ecs.AmiHardwareType.ARM),
       containerEnvironment,
       spotPrice: process.env.SPOT_PRICE,
       enableAutomaticBackups: !DEBUG,
@@ -41,7 +39,6 @@ export class CdkMinecraftStack extends Stack {
             hostedZoneId: HOSTED_ZONE_ID,
             recordName: DNS_RECORD_NAME,
           },
-      containerInsights: false,
       logGroupName: process.env.LOG_GROUP_NAME,
       ec2KeyName: process.env.EC2_KEY_NAME,
     });
@@ -53,6 +50,7 @@ export class CdkMinecraftStack extends Stack {
         minute: "0",
       }),
       minCapacity: 0,
+      desiredCapacity: 0,
       maxCapacity: 0,
     });
     new autoscaling.ScheduledAction(this, "ScaleUp", {
@@ -61,7 +59,8 @@ export class CdkMinecraftStack extends Stack {
         hour: `${15 - TIMEZONE_OFFSET}`,
         minute: "0",
       }),
-      minCapacity: 1,
+      minCapacity: 0,
+      desiredCapacity: 1,
       maxCapacity: 1,
     });
   }

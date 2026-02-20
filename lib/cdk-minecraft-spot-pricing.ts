@@ -34,6 +34,8 @@ export interface CdkMinecraftSpotPricingProps {
   logStreamPrefix?: string;
 }
 
+const DEFAULT_MINECRAFT_PORT = 25565;
+
 export class CdkMinecraftSpotPricing extends Construct {
   public readonly autoScalingGroup: autoscaling.AutoScalingGroup;
 
@@ -45,15 +47,17 @@ export class CdkMinecraftSpotPricing extends Construct {
     super(scope, id);
 
     props.instanceType =
-      props.instanceType ?? new ec2.InstanceType("t3.medium");
+      props.instanceType ?? new ec2.InstanceType("t3g.medium");
     props.machineImage =
-      props.machineImage ?? ecs.EcsOptimizedImage.amazonLinux2();
-    props.port = props.port ?? 25565;
+      props.machineImage ??
+      ecs.EcsOptimizedImage.amazonLinux2023(ecs.AmiHardwareType.ARM);
+    props.port = props.port ?? DEFAULT_MINECRAFT_PORT;
     props.containerEnvironment = props.containerEnvironment ?? {};
     props.containerEnvironment.EULA = "true";
     props.logStreamPrefix = props.logStreamPrefix ?? "minecraft-server";
     props.logGroupRetentionInDays =
       props.logGroupRetentionInDays ?? logs.RetentionDays.ONE_WEEK;
+    props.containerInsights = props.containerInsights ?? false;
 
     // Cluster
     const vpc = new ec2.Vpc(this, "Vpc", { natGateways: 0 });
