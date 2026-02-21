@@ -118,6 +118,10 @@ export class CdkMinecraftSpotPricing extends Construct {
           subnets: cluster.vpc.publicSubnets,
         },
         newInstancesProtectedFromScaleIn: true,
+        updatePolicy: autoscaling.UpdatePolicy.rollingUpdate({
+          minInstancesInService: 0, // allow full replacement (server can be down briefly)
+          waitOnResourceSignals: false,
+        }),
       },
     );
 
