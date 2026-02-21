@@ -222,6 +222,7 @@ export class CdkMinecraftSpotPricing extends Construct {
       enableExecuteCommand: true,
     });
     ec2Service.node.addDependency(fileSystem);
+    ec2Service.node.addDependency(capacityProvider);
 
     // DNS Update
     if (props.dnsConfig !== undefined) {
