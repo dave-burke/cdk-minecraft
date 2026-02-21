@@ -37,6 +37,7 @@ export class CdkMinecraftStack extends Stack {
           },
       logGroupName: process.env.LOG_GROUP_NAME,
       ec2KeyName: process.env.EC2_KEY_NAME,
+      containerInsights: true,
     });
 
     // Weekday schedule: 3PM-11PM
