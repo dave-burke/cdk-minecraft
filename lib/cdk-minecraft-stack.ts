@@ -14,7 +14,6 @@ const containerEnvironment = fs.existsSync(CONTAINER_ENV_FILE)
   : {};
 
 const DEBUG: boolean = process.env.DEBUG ? Boolean(process.env.DEBUG) : false;
-const TIMEZONE_OFFSET = Number(process.env.TIMEZONE_OFFSET) || 0;
 const HOSTED_ZONE_ID: string = process.env.HOSTED_ZONE_ID ?? "";
 const DNS_RECORD_NAME: string = process.env.DNS_RECORD_NAME ?? "";
 
@@ -40,14 +39,15 @@ export class CdkMinecraftStack extends Stack {
       containerInsights: true,
     });
 
-    // Weekday schedule: 3PM-11PM
+    // Weekday schedule: 3PM-9PM
     new autoscaling.ScheduledAction(this, "ScaleUpWeekdays", {
       autoScalingGroup: server.autoScalingGroup,
       schedule: autoscaling.Schedule.cron({
         weekDay: "1-5",
-        hour: `${15 + TIMEZONE_OFFSET}`,
+        hour: "15",
         minute: "0",
       }),
+      timeZone: `${process.env.TIMEZONE}`,
       minCapacity: 0,
       desiredCapacity: 1,
       maxCapacity: 1,
@@ -56,9 +56,10 @@ export class CdkMinecraftStack extends Stack {
       autoScalingGroup: server.autoScalingGroup,
       schedule: autoscaling.Schedule.cron({
         weekDay: "1-5",
-        hour: `${23 + TIMEZONE_OFFSET}`,
+        hour: "21",
         minute: "0",
       }),
+      timeZone: `${process.env.TIMEZONE}`,
       minCapacity: 0,
       desiredCapacity: 0,
       maxCapacity: 0,
@@ -69,9 +70,10 @@ export class CdkMinecraftStack extends Stack {
       autoScalingGroup: server.autoScalingGroup,
       schedule: autoscaling.Schedule.cron({
         weekDay: "0,6",
-        hour: `${7 + TIMEZONE_OFFSET}`,
+        hour: "7",
         minute: "0",
       }),
+      timeZone: `${process.env.TIMEZONE}`,
       minCapacity: 0,
       desiredCapacity: 1,
       maxCapacity: 1,
@@ -80,9 +82,10 @@ export class CdkMinecraftStack extends Stack {
       autoScalingGroup: server.autoScalingGroup,
       schedule: autoscaling.Schedule.cron({
         weekDay: "0,6",
-        hour: `${21 + TIMEZONE_OFFSET}`,
+        hour: "21",
         minute: "0",
       }),
+      timeZone: `${process.env.TIMEZONE}`,
       minCapacity: 0,
       desiredCapacity: 0,
       maxCapacity: 0,
