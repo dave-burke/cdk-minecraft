@@ -48,9 +48,7 @@ export class CdkMinecraftStack extends Stack {
         minute: "0",
       }),
       timeZone: `${process.env.TIMEZONE}`,
-      minCapacity: 0,
       desiredCapacity: 1,
-      maxCapacity: 1,
     });
     new autoscaling.ScheduledAction(this, "ScaleDownWeekdays", {
       autoScalingGroup: server.autoScalingGroup,
@@ -60,9 +58,7 @@ export class CdkMinecraftStack extends Stack {
         minute: "0",
       }),
       timeZone: `${process.env.TIMEZONE}`,
-      minCapacity: 0,
       desiredCapacity: 0,
-      maxCapacity: 0,
     });
 
     // Weekend schedule: 7AM-9PM
@@ -74,9 +70,7 @@ export class CdkMinecraftStack extends Stack {
         minute: "0",
       }),
       timeZone: `${process.env.TIMEZONE}`,
-      minCapacity: 0,
       desiredCapacity: 1,
-      maxCapacity: 1,
     });
     new autoscaling.ScheduledAction(this, "ScaleDownWeekends", {
       autoScalingGroup: server.autoScalingGroup,
@@ -86,9 +80,7 @@ export class CdkMinecraftStack extends Stack {
         minute: "0",
       }),
       timeZone: `${process.env.TIMEZONE}`,
-      minCapacity: 0,
       desiredCapacity: 0,
-      maxCapacity: 0,
     });
   }
 }

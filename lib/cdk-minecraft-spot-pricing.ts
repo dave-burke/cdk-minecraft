@@ -117,7 +117,7 @@ export class CdkMinecraftSpotPricing extends Construct {
         vpcSubnets: {
           subnets: cluster.vpc.publicSubnets,
         },
-        newInstancesProtectedFromScaleIn: true,
+        newInstancesProtectedFromScaleIn: false,
         updatePolicy: autoscaling.UpdatePolicy.rollingUpdate({
           minInstancesInService: 0, // allow full replacement (server can be down briefly)
           waitOnResourceSignals: false,
@@ -193,7 +193,7 @@ export class CdkMinecraftSpotPricing extends Construct {
       {
         autoScalingGroup: this.autoScalingGroup,
         enableManagedScaling: true,
-        enableManagedTerminationProtection: true,
+        enableManagedTerminationProtection: false,
         targetCapacityPercent: 100,
         maximumScalingStepSize: 1,
         minimumScalingStepSize: 1,
