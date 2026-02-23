@@ -1,4 +1,5 @@
 import * as cdk from "aws-cdk-lib";
+import * as scheduler from "aws-cdk-lib/aws-scheduler";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as autoscaling from "aws-cdk-lib/aws-autoscaling";
 import * as ecs from "aws-cdk-lib/aws-ecs";
@@ -37,7 +38,10 @@ export interface CdkMinecraftSpotPricingProps {
 const DEFAULT_MINECRAFT_PORT = 25565;
 
 export class CdkMinecraftSpotPricing extends Construct {
-  public readonly autoScalingGroup: autoscaling.AutoScalingGroup;
+  private readonly schedulerRole: iam.Role;
+  private readonly scheduleGroup: scheduler.CfnScheduleGroup;
+  private readonly cluster: ecs.Cluster;
+  private readonly ec2Service: ecs.Ec2Service;
 
   constructor(
     scope: Construct,
@@ -61,7 +65,7 @@ export class CdkMinecraftSpotPricing extends Construct {
 
     // Cluster
     const vpc = new ec2.Vpc(this, "Vpc", { natGateways: 0 });
-    const cluster = new ecs.Cluster(this, "EcsCluster", {
+    this.cluster = new ecs.Cluster(this, "EcsCluster", {
       vpc,
       containerInsightsV2: props.containerInsights
         ? ecs.ContainerInsights.ENABLED
@@ -76,54 +80,6 @@ export class CdkMinecraftSpotPricing extends Construct {
     if (props.ec2KeyName !== undefined) {
       securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22));
     }
-
-    // Autoscaling
-    const launchTemplate = new ec2.LaunchTemplate(this, "LaunchTemplate", {
-      instanceType: props.instanceType,
-      securityGroup,
-      machineImage: props.machineImage,
-      associatePublicIpAddress: true,
-      keyPair: props.ec2KeyName
-        ? ec2.KeyPair.fromKeyPairName(this, "KeyPair", props.ec2KeyName)
-        : undefined,
-      spotOptions: props.spotPrice
-        ? { maxPrice: parseFloat(props.spotPrice) }
-        : undefined,
-      userData: (() => {
-        const ud = ec2.UserData.forLinux();
-        ud.addCommands(
-          `echo ECS_CLUSTER=${cluster.clusterName} >> /etc/ecs/ecs.config`,
-        );
-        return ud;
-      })(),
-      role: new iam.Role(this, "InstanceRole", {
-        assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
-        managedPolicies: [
-          iam.ManagedPolicy.fromAwsManagedPolicyName(
-            "service-role/AmazonEC2ContainerServiceforEC2Role",
-          ),
-        ],
-      }),
-    });
-
-    this.autoScalingGroup = new autoscaling.AutoScalingGroup(
-      this,
-      "MinecraftServer",
-      {
-        vpc,
-        launchTemplate,
-        minCapacity: 0,
-        maxCapacity: 1,
-        vpcSubnets: {
-          subnets: cluster.vpc.publicSubnets,
-        },
-        newInstancesProtectedFromScaleIn: false,
-        updatePolicy: autoscaling.UpdatePolicy.rollingUpdate({
-          minInstancesInService: 0, // allow full replacement (server can be down briefly)
-          waitOnResourceSignals: false,
-        }),
-      },
-    );
 
     // Optional CloudWatch Log Group
     let logDriver: ecs.LogDriver | undefined;
@@ -162,15 +118,78 @@ export class CdkMinecraftSpotPricing extends Construct {
       command: props.command,
     });
 
+    // Autoscaling
+    const launchTemplate = new ec2.LaunchTemplate(this, "LaunchTemplate", {
+      instanceType: props.instanceType,
+      securityGroup,
+      machineImage: props.machineImage,
+      associatePublicIpAddress: true,
+      keyPair: props.ec2KeyName
+        ? ec2.KeyPair.fromKeyPairName(this, "KeyPair", props.ec2KeyName)
+        : undefined,
+      spotOptions: props.spotPrice
+        ? { maxPrice: parseFloat(props.spotPrice) }
+        : undefined,
+      userData: (() => {
+        const ud = ec2.UserData.forLinux();
+        ud.addCommands(
+          `echo ECS_CLUSTER=${this.cluster.clusterName} >> /etc/ecs/ecs.config`,
+        );
+        return ud;
+      })(),
+      role: new iam.Role(this, "InstanceRole", {
+        assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
+        managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName(
+            "service-role/AmazonEC2ContainerServiceforEC2Role",
+          ),
+        ],
+      }),
+    });
+
+    const autoScalingGroup = new autoscaling.AutoScalingGroup(
+      this,
+      "MinecraftServer",
+      {
+        vpc,
+        launchTemplate,
+        minCapacity: 0,
+        maxCapacity: 1,
+        vpcSubnets: {
+          subnets: this.cluster.vpc.publicSubnets,
+        },
+        newInstancesProtectedFromScaleIn: false,
+        updatePolicy: autoscaling.UpdatePolicy.rollingUpdate({
+          minInstancesInService: 0, // allow full replacement (server can be down briefly)
+          waitOnResourceSignals: false,
+        }),
+      },
+    );
+
+    const capacityProvider = new ecs.AsgCapacityProvider(
+      this,
+      "CapacityProvider",
+      {
+        autoScalingGroup: autoScalingGroup,
+        enableManagedScaling: true,
+        enableManagedTerminationProtection: false,
+        targetCapacityPercent: 100,
+        maximumScalingStepSize: 1,
+        minimumScalingStepSize: 1,
+      },
+    );
+    capacityProvider.node.addDependency(autoScalingGroup);
+    this.cluster.addAsgCapacityProvider(capacityProvider);
+
     // File system
     const fileSystem = new efs.FileSystem(this, "ServerFiles", {
-      vpc: cluster.vpc,
+      vpc: this.cluster.vpc,
       encrypted: true,
       enableAutomaticBackups: props.enableAutomaticBackups,
       lifecyclePolicy: efs.LifecyclePolicy.AFTER_7_DAYS,
       removalPolicy: props.efsRemovalPolicy,
     });
-    fileSystem.connections.allowDefaultPortFrom(this.autoScalingGroup);
+    fileSystem.connections.allowDefaultPortFrom(autoScalingGroup);
     fileSystem.node.addDependency(securityGroup);
 
     ec2Task.addVolume({
@@ -186,24 +205,9 @@ export class CdkMinecraftSpotPricing extends Construct {
       readOnly: false,
     });
 
-    // Autoscaling
-    const capacityProvider = new ecs.AsgCapacityProvider(
-      this,
-      "CapacityProvider",
-      {
-        autoScalingGroup: this.autoScalingGroup,
-        enableManagedScaling: true,
-        enableManagedTerminationProtection: false,
-        targetCapacityPercent: 100,
-        maximumScalingStepSize: 1,
-        minimumScalingStepSize: 1,
-      },
-    );
-    capacityProvider.node.addDependency(this.autoScalingGroup);
-    cluster.addAsgCapacityProvider(capacityProvider);
-
-    const ec2Service = new ecs.Ec2Service(this, "Ec2Service", {
-      cluster,
+    // Service
+    this.ec2Service = new ecs.Ec2Service(this, "Ec2Service", {
+      cluster: this.cluster,
       taskDefinition: ec2Task,
       capacityProviderStrategies: [
         {
@@ -221,8 +225,24 @@ export class CdkMinecraftSpotPricing extends Construct {
       placementConstraints: [ecs.PlacementConstraint.distinctInstances()],
       enableExecuteCommand: true,
     });
-    ec2Service.node.addDependency(fileSystem);
-    ec2Service.node.addDependency(capacityProvider);
+    this.ec2Service.node.addDependency(fileSystem);
+    this.ec2Service.node.addDependency(capacityProvider);
+
+    // Scheduling role
+    this.schedulerRole = new iam.Role(this, "SchedulerRole", {
+      assumedBy: new iam.ServicePrincipal("scheduler.amazonaws.com"),
+    });
+    // Permission to update the ECS service
+    this.schedulerRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ["ecs:UpdateService"],
+        resources: [this.ec2Service.serviceArn],
+      }),
+    );
+
+    this.scheduleGroup = new scheduler.CfnScheduleGroup(this, "ScheduleGroup", {
+      name: "minecraft-schedules",
+    });
 
     // DNS Update
     if (props.dnsConfig !== undefined) {
@@ -259,12 +279,33 @@ export class CdkMinecraftSpotPricing extends Construct {
           source: ["aws.autoscaling"],
           detailType: ["EC2 Instance Launch Successful"],
           detail: {
-            AutoScalingGroupName: [this.autoScalingGroup.autoScalingGroupName],
+            AutoScalingGroupName: [autoScalingGroup.autoScalingGroupName],
           },
         },
         targets: [new targets.LambdaFunction(dnsUpdateLambda)],
       });
-      rule.node.addDependency(ec2Service);
+      rule.node.addDependency(this.ec2Service);
     }
   }
+  public makeSchedule = (
+    id: string,
+    cron: string,
+    desiredCount: number,
+    timezone: string | undefined,
+  ) =>
+    new scheduler.CfnSchedule(this, id, {
+      groupName: this.scheduleGroup.name,
+      scheduleExpression: `cron(${cron})`,
+      scheduleExpressionTimezone: timezone,
+      flexibleTimeWindow: { mode: "OFF" },
+      target: {
+        arn: "arn:aws:scheduler:::aws-sdk:ecs:updateService",
+        roleArn: this.schedulerRole.roleArn,
+        input: JSON.stringify({
+          Cluster: this.cluster.clusterArn,
+          Service: this.ec2Service.serviceArn,
+          DesiredCount: desiredCount,
+        }),
+      },
+    });
 }

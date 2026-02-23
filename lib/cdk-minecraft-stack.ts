@@ -1,5 +1,4 @@
 import * as cdk from "aws-cdk-lib";
-import * as autoscaling from "aws-cdk-lib/aws-autoscaling";
 import { CdkMinecraftSpotPricing } from "./cdk-minecraft-spot-pricing";
 import { Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
@@ -39,48 +38,10 @@ export class CdkMinecraftStack extends Stack {
       containerInsights: true,
     });
 
-    // Weekday schedule: 3PM-9PM
-    new autoscaling.ScheduledAction(this, "ScaleUpWeekdays", {
-      autoScalingGroup: server.autoScalingGroup,
-      schedule: autoscaling.Schedule.cron({
-        weekDay: "1-5",
-        hour: "15",
-        minute: "0",
-      }),
-      timeZone: `${process.env.TIMEZONE}`,
-      desiredCapacity: 1,
-    });
-    new autoscaling.ScheduledAction(this, "ScaleDownWeekdays", {
-      autoScalingGroup: server.autoScalingGroup,
-      schedule: autoscaling.Schedule.cron({
-        weekDay: "1-5",
-        hour: "21",
-        minute: "0",
-      }),
-      timeZone: `${process.env.TIMEZONE}`,
-      desiredCapacity: 0,
-    });
-
-    // Weekend schedule: 7AM-9PM
-    new autoscaling.ScheduledAction(this, "ScaleUpWeekends", {
-      autoScalingGroup: server.autoScalingGroup,
-      schedule: autoscaling.Schedule.cron({
-        weekDay: "0,6",
-        hour: "7",
-        minute: "0",
-      }),
-      timeZone: `${process.env.TIMEZONE}`,
-      desiredCapacity: 1,
-    });
-    new autoscaling.ScheduledAction(this, "ScaleDownWeekends", {
-      autoScalingGroup: server.autoScalingGroup,
-      schedule: autoscaling.Schedule.cron({
-        weekDay: "0,6",
-        hour: "21",
-        minute: "0",
-      }),
-      timeZone: `${process.env.TIMEZONE}`,
-      desiredCapacity: 0,
-    });
+    const tz = process.env.TIMEZONE;
+    server.makeSchedule("StartWeekdays", "0 15 ? * MON-FRI *", 1, tz);
+    server.makeSchedule("StopWeekdays", "0 21 ? * MON-FRI *", 0, tz);
+    server.makeSchedule("StartWeekends", "0 7  ? * SAT,SUN *", 1, tz);
+    server.makeSchedule("StopWeekends", "0 21 ? * SAT,SUN *", 0, tz);
   }
 }
