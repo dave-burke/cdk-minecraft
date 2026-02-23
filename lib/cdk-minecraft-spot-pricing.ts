@@ -172,7 +172,7 @@ export class CdkMinecraftSpotPricing extends Construct {
       {
         autoScalingGroup: autoScalingGroup,
         enableManagedScaling: true,
-        enableManagedTerminationProtection: false,
+        enableManagedTerminationProtection: true,
         targetCapacityPercent: 100,
         maximumScalingStepSize: 1,
         minimumScalingStepSize: 1,
